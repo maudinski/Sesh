@@ -4,16 +4,16 @@ This is abstract session manager for Go.
 There are four main functions:
 
 ------------------------------------------------------------
-sm := sesh.NewSessionManager() //creates new session object
+	sm := sesh.NewSessionManager() //creates new session object
 
-c := sm.StartSessionCookie(identifier) // starts the session(logs them in), returns a cookie
+	c := sm.StartSessionCookie(identifier) // starts the session(logs them in), returns a cookie
 
-err := sm.VerifySessionCookie(c) //takes the cookie, verifies the session(checks theyre 
-								 //logged in). Returns nil if Verified
+	err := sm.VerifySessionCookie(c) //takes the cookie, verifies the session(checks theyre 
+								 	//logged in). Returns nil if Verified
 
-err := sm.EndSessionCookie(c) //takes the cookie, ends the session (logs them out). returns
-							  //an error if the cookie was invalid (meaning theyre not logged
-							  //in anyways)
+	err := sm.EndSessionCookie(c) //takes the cookie, ends the session (logs them out). returns
+							  	//an error if the cookie was invalid (meaning theyre not logged
+							  	//in anyways)
 
 ------------------------------------------------------------
 
