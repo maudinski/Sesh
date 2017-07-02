@@ -71,7 +71,9 @@ to log someone out (end a session):
 Under the hood:
 
 The sessions are stored as a 2 dimensional slice. Its more specifically a slice
-of chains, and each chain holds (by default) 1000 session structs. 
+of chains, and each chain holds (by default) 1000 session structs. The position
+of the session and the identifier(passed in to StartSession) are stored in the 
+returned cookie
 
 
 Resizing is done when 3/4 of the last chain is full, and adds one more chain to the 

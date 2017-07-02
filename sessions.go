@@ -86,8 +86,9 @@ func NewSessionManager() *SessionManager{
 	return &sm
 }
 
-//will eventually have more customizable options, line initial amount of chains, when 
-//to resize, how many chains to add on resize, etc. 
+//custom initializer
+//will eventually have more customizable options, like initial amount of chains, when 
+//to resize, how many chains to add on resize, http.Cookie Name & maybe Value format, etc
 func NewCustomSessionManager(chainSize int) *SessionManager{
 	var sm SessionManager
 	
@@ -109,6 +110,12 @@ func NewCustomSessionManager(chainSize int) *SessionManager{
 
 /*********************verify sessions stuff**************************/
 
+//takes in the spot of the session and the identifier
+//
+//The first 2 if statements check to make sure that the cookie's values werent 
+//tampered with (to prevent against someone tampering with their cookies and
+//trying to break the server). 3rd and 4th if statement check if the identifier
+//matches and if the session is active, respectively. Returns nil if the session is valid
 func (sm *SessionManager) VerifySession(spot SpotMarker, identifier string) error{	
 	if spot.chain > sm.currentChains || spot.chain < 0 {
 		return errors.New("Cookie has invalid chain index of " + strconv.Itoa(spot.chain))
@@ -125,6 +132,7 @@ func (sm *SessionManager) VerifySession(spot SpotMarker, identifier string) erro
 	return nil
 }
 
+//takes in the cookie. Parses the cookie and returns sm.VerifySession
 func (sm *SessionManager) VerifySessionCookie(c *http.Cookie) error {	
 	spot, identifier, err := sm.ParseCookie(c)
 	if err != nil{
@@ -135,6 +143,9 @@ func (sm *SessionManager) VerifySessionCookie(c *http.Cookie) error {
 
 /************************start session stuff*************************/
 
+//takes the identifier for the session
+//requests the next spot from sm.nextSpot(), sets the sessions in sm.chains, and runs 
+//concurrently sm.checkResize. returns the spot
 func (sm *SessionManager) StartSession(identifier string) SpotMarker {	
 	spot := sm.nextSpot()
 	sm.chains[spot.chain][spot.index] = session{true, SpotMarker{-1, 0}, identifier}
@@ -142,6 +153,7 @@ func (sm *SessionManager) StartSession(identifier string) SpotMarker {
 	return spot
 }
 
+//takes the identifier string. calls sm.StartSession, then returns a new cookie 
 func (sm *SessionManager) StartSessionCookie(identifier string) *http.Cookie{
 	spot := sm.StartSession(identifier)
 	return newCookie(spot, identifier)
@@ -149,6 +161,15 @@ func (sm *SessionManager) StartSessionCookie(identifier string) *http.Cookie{
 
 /*************************end session stuff****************************/
 
+//First verifies that the session ending is correct (to prevent someone from messing
+//around and ending other peoples sessions with some custom cookies), then ends the 
+//session by: setting the spot active to false and adding that spot to the strung 
+//together empty spots.
+//
+//more specific on the stringing: if sm.openSpot.chain == -1, then there is no spots in
+//the string, so set it as sm.openSpot and as sm.lasedEndedSpot. other wise, set the 
+//session at sm.lastEndedSpot to point to this newly-ended spot, and update 
+//sm.lastEndedSpot
 func (sm *SessionManager) EndSession(spot SpotMarker, identifier string)error{
 	err := sm.VerifySession(spot, identifier)
 	if err != nil {
@@ -168,18 +189,23 @@ func (sm *SessionManager) EndSession(spot SpotMarker, identifier string)error{
 	return nil
 }
 
-
+//parses the cookie passed, then calls sm.EndSession
 func (sm *SessionManager) EndSessionCookie(c *http.Cookie) error {
 	spot, identifier, err := sm.ParseCookie(c)
 	if err != nil {
 		return err	
 	}
-	sm.EndSession(spot, identifier)
+	err = sm.EndSession(spot, identifier)
+	if err != nil {
+		return err	
+	}
 	return nil
 }
 
 /***********************cookie parsing*******************************/
 
+//parses , error checks, and returns accordingly. Cookie value should be of format:
+//"6|965|brocrast21" (chain|index|identifier)
 func (sm *SessionManager) ParseCookie(c *http.Cookie) (SpotMarker, string, error){
 	var spot SpotMarker
 	parts := strings.Split(c.Value, "|")	
@@ -202,6 +228,14 @@ func (sm *SessionManager) ParseCookie(c *http.Cookie) (SpotMarker, string, error
 
 /**************************************internals****************************************/
 
+
+/********************resize stuff********************/
+//called by sm.StartSession
+//checks if resizing is needed. first if checks if its already being resized, then
+//returns. Second if checks if the passed in spot (which is the newly started session)
+//is at the sm.resizeAt variable, and it if was added to the last chain (because if 
+//the spot.index is past the sm.resizeAt, but it was added to the first chain, and 
+//there is 7 chains, then there is no need to resize yet). calls sm.resize
 func (sm *SessionManager) checkResize(spot SpotMarker){
 	if sm.beingResized{
 		return	
@@ -212,27 +246,9 @@ func (sm *SessionManager) checkResize(spot SpotMarker){
 	}
 }
 
-func (sm *SessionManager) nextSpot() SpotMarker {
-	if sm.openSpot.chain == -1 {
-		if sm.farthestPlaced.index <= sm.chainSize - 2{
-			sm.farthestPlaced.index++
-		} else {
-			sm.farthestPlaced.index = 0
-			sm.farthestPlaced.chain++
-		}
-		return sm.farthestPlaced
-	}
-	//lock
-	spot := sm.openSpot
-	if sm.lastEndedSpot == spot{
-		sm.openSpot.chain = -1
-	} else {
-		sm.openSpot = sm.chains[spot.chain][spot.index].nextSpot
-	}
-	//unlock
-	return spot
-}
-
+//called by sm.checkResize(). incriments the sm.currentChains, creates a chain that is
+//one size bigger, then copies over the contents, and sets sm.chains equal to newChains.
+//resets sm.beingResized to false
 func (sm *SessionManager) resize(){
 	sm.currentChains++
 	newChains := make([]chain, sm.currentChains+1)
@@ -246,6 +262,42 @@ func (sm *SessionManager) resize(){
 	sm.beingResized = false	
 }
 
+
+/************************nextSpot**********************/
+
+//next spot returns the next available spot for a session to be started. called by
+//sm.StartSession(). 
+//first checks if there is any strung together from ended sessions. If sm.openSpot.chain
+// == -1, then that means there is no ended spots (done through consistency throughout 
+//the program), so send back from the farthestPlaced. otherwise, send back from open spot
+//, and update the strung together ended sessions accordingly
+func (sm *SessionManager) nextSpot() SpotMarker {
+	//lock
+	//defer unlock
+	if sm.openSpot.chain == -1 {
+		if sm.farthestPlaced.index <= sm.chainSize - 2{
+			sm.farthestPlaced.index++
+		} else {
+			sm.farthestPlaced.index = 0
+			sm.farthestPlaced.chain++
+		}
+		return sm.farthestPlaced
+	}
+	spot := sm.openSpot
+	if sm.lastEndedSpot == spot{
+		sm.openSpot.chain = -1
+	} else {
+		sm.openSpot = sm.chains[spot.chain][spot.index].nextSpot
+	}
+	return spot
+}
+
+
+/**************************new cookie***********************/
+
+//creates the value string by stringing things together with delimiter "|". will be
+// "(chainSessionIsStoredIn)|(IndexInThatChain)|(identifier)", example: "4|314|pablo667"
+//creates a cookiei with Name: "session" and Value: "6|7|hiker777"(or whatever)
 func newCookie(spot SpotMarker, identifier string) *http.Cookie{
 	val := strconv.Itoa(spot.chain) + "|" + strconv.Itoa(spot.index) + "|" + identifier
 	c := &http.Cookie{Name: "session", Value: val}
