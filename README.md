@@ -1,10 +1,10 @@
-This is abstract session manager for Go.
+This is a session manager for Go.
 
 
 There are four main functions:
 
 ------------------------------------------------------------
-	sm := sesh.NewSessionManager() //creates new session object
+	sm := sesh.NewSessionManager() //creates new SessionManager object
 
 	c := sm.StartSessionCookie(identifier) // starts the session(logs them in), returns a cookie
 
