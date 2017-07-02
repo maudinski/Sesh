@@ -39,7 +39,7 @@ type SpotMarker struct {
 }
 
 //should be called before http.ListenAndServe
-func NewSessionManager(chainSize int) *SessionManager{
+func NewCustomSessionManager(chainSize int) *SessionManager{
 	var sm SessionManager
 	
 	sm.chains = make([]chain, 1)
@@ -57,6 +57,26 @@ func NewSessionManager(chainSize int) *SessionManager{
 
 	return &sm
 }
+
+func NewSessionManager() *SessionManager{
+	var sm SessionManager
+	
+	sm.chains = make([]chain, 1)
+	sm.chainSize = 1000
+	sm.chains[0] = make(chain, 1000)
+	sm.currentChains = 0
+	
+	
+	sm.openSpot = SpotMarker{-1, 0}
+	sm.farthestPlaced = SpotMarker{0, -1}
+	sm.lastEndedSpot = SpotMarker{}
+
+	sm.beingResized = false
+	sm.resizeAt = (1000 / 4) * 3
+
+	return &sm
+}
+
 
 /****************************verify sessions stuff*********************************/
 
