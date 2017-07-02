@@ -10,6 +10,7 @@ c := sm.StartSessionCookie(identifier) // starts the session(logs them in), retu
 
 err := sm.VerifySessionCookie(c) //takes the cookie, verifies the session(checks theyre 
 								 //logged in). Returns nil if Verified
+
 err := sm.EndSessionCookie(c) //takes the cookie, ends the session (logs them out). returns
 							  //an error if the cookie was invalid (meaning theyre not logged
 							  //in anyways)
