@@ -7,25 +7,49 @@ import(
 	"errors"
 )
 
-//TODO make custom error types, for easy debugging for user
+var defaultChainSize = 1000
 
+//This object should be created as a global variable, so as to pass around the entire
+//program
 type SessionManager struct {
-	
+	//chains is a slice of chain(chain is []session structs). This will be where all
+	//the sessions are stored
 	chains []chain
-	currentChains int //will be equivalent to indexing of array (so 0 when there i 1 chain)
+	
+	//will be equivalent to indexing of chains (so 0 when there i 1 chain). Holds the
+	//amount of chains - 1 (so as to start at 0)
+	currentChains int 
+	
+	//The size of the each chain. If calling the default initializer, will be 
+	//defaultChainSize (global)
 	chainSize int
-
+	
+	//the placement of the earliest-end spot. Will be the beginning of the 
+	//strung-together empty spots of ended sessions. Used by sm.nextSpot() and EndSession
 	openSpot SpotMarker
-	farthestPlaced SpotMarker
+	
+	//The most-recently ended session spot. Everytime a session is ended, this spot gets
+	//strung the newly-ended session spot, them lastEndedSpot is set to that newly-ended
+	//spot. This and openSpot simulate a linked list of open places that will be used
+	//first when StartSession calls nextSpot to start a session
 	lastEndedSpot SpotMarker
+	
+	//the farthest placed spot. If there is empty spot from ended sessions, then 
+	//StartSession will recieve this spot from nextSpot
+	farthestPlaced SpotMarker
 
+	//so that its not tried to be resized twice
 	beingResized bool
+
+	//when to resize
 	resizeAt int
 
 }
 
+//a chains in SessionManager is []chain
 type chain []session
 
+//session structure
 type session struct {
 	active bool
 	nextSpot SpotMarker
@@ -33,12 +57,37 @@ type session struct {
 	identifier string	
 }
 
+//which chain its in, and which index
 type SpotMarker struct {
 	chain int
 	index int	
 }
 
-//should be called before http.ListenAndServe
+/*******************************external functions for use*******************************/
+
+/****************************initializers*****************************/
+//default initializer
+func NewSessionManager() *SessionManager{
+	var sm SessionManager
+	
+	sm.chains = make([]chain, 1)
+	sm.chainSize = defaultChainSize
+	sm.chains[0] = make(chain, defaultChainSize)
+	sm.currentChains = 0
+	
+	
+	sm.openSpot = SpotMarker{-1, 0}
+	sm.farthestPlaced = SpotMarker{0, -1}
+	sm.lastEndedSpot = SpotMarker{}
+
+	sm.beingResized = false
+	sm.resizeAt = (defaultChainSize / 4) * 3
+
+	return &sm
+}
+
+//will eventually have more customizable options, line initial amount of chains, when 
+//to resize, how many chains to add on resize, etc. 
 func NewCustomSessionManager(chainSize int) *SessionManager{
 	var sm SessionManager
 	
@@ -58,27 +107,7 @@ func NewCustomSessionManager(chainSize int) *SessionManager{
 	return &sm
 }
 
-func NewSessionManager() *SessionManager{
-	var sm SessionManager
-	
-	sm.chains = make([]chain, 1)
-	sm.chainSize = 1000
-	sm.chains[0] = make(chain, 1000)
-	sm.currentChains = 0
-	
-	
-	sm.openSpot = SpotMarker{-1, 0}
-	sm.farthestPlaced = SpotMarker{0, -1}
-	sm.lastEndedSpot = SpotMarker{}
-
-	sm.beingResized = false
-	sm.resizeAt = (1000 / 4) * 3
-
-	return &sm
-}
-
-
-/****************************verify sessions stuff*********************************/
+/*********************verify sessions stuff**************************/
 
 func (sm *SessionManager) VerifySession(spot SpotMarker, identifier string) error{	
 	if spot.chain > sm.currentChains || spot.chain < 0 {
@@ -90,7 +119,6 @@ func (sm *SessionManager) VerifySession(spot SpotMarker, identifier string) erro
 	if sm.chains[spot.chain][spot.index].identifier != identifier {
 		return errors.New("Identfiers dont match")	
 	}
-	//maybe
 	if !sm.chains[spot.chain][spot.index].active {
 		return errors.New("Session is not active")
 	}
@@ -105,7 +133,7 @@ func (sm *SessionManager) VerifySessionCookie(c *http.Cookie) error {
 	return sm.VerifySession(spot, identifier)
 }
 
-/*******************************start session stuff********************************/
+/************************start session stuff*************************/
 
 func (sm *SessionManager) StartSession(identifier string) SpotMarker {	
 	spot := sm.nextSpot()
@@ -119,14 +147,14 @@ func (sm *SessionManager) StartSessionCookie(identifier string) *http.Cookie{
 	return newCookie(spot, identifier)
 }
 
-/********************************end session stuff***********************************/
+/*************************end session stuff****************************/
 
 func (sm *SessionManager) EndSession(spot SpotMarker, identifier string)error{
 	err := sm.VerifySession(spot, identifier)
 	if err != nil {
 		return errors.New("Trying to end invalid session: " + err.Error())
 	}
-	//lock some shit up
+	//lock
 	sm.chains[spot.chain][spot.index].active = false
 	if sm.openSpot.chain == -1 {
 		sm.openSpot = spot
@@ -136,7 +164,7 @@ func (sm *SessionManager) EndSession(spot SpotMarker, identifier string)error{
 	}
 	sm.chains[sm.lastEndedSpot.chain][sm.lastEndedSpot.index].nextSpot = spot
 	sm.lastEndedSpot = spot
-	//unlock some shit up
+	//unlock
 	return nil
 }
 
@@ -150,7 +178,7 @@ func (sm *SessionManager) EndSessionCookie(c *http.Cookie) error {
 	return nil
 }
 
-/******************************cookie paring**************************************/
+/***********************cookie parsing*******************************/
 
 func (sm *SessionManager) ParseCookie(c *http.Cookie) (SpotMarker, string, error){
 	var spot SpotMarker
@@ -170,6 +198,8 @@ func (sm *SessionManager) ParseCookie(c *http.Cookie) (SpotMarker, string, error
 	return spot, parts[2], nil
 }
 
+
+
 /**************************************internals****************************************/
 
 func (sm *SessionManager) checkResize(spot SpotMarker){
@@ -183,7 +213,7 @@ func (sm *SessionManager) checkResize(spot SpotMarker){
 }
 
 func (sm *SessionManager) nextSpot() SpotMarker {
-	if sm.openSpot.chain == -1 { // or !sm.openSpots
+	if sm.openSpot.chain == -1 {
 		if sm.farthestPlaced.index <= sm.chainSize - 2{
 			sm.farthestPlaced.index++
 		} else {
@@ -192,27 +222,27 @@ func (sm *SessionManager) nextSpot() SpotMarker {
 		}
 		return sm.farthestPlaced
 	}
-	//lock some shit up
+	//lock
 	spot := sm.openSpot
 	if sm.lastEndedSpot == spot{
 		sm.openSpot.chain = -1
 	} else {
 		sm.openSpot = sm.chains[spot.chain][spot.index].nextSpot
 	}
-	//unlock some shit up
+	//unlock
 	return spot
 }
 
 func (sm *SessionManager) resize(){
 	sm.currentChains++
 	newChains := make([]chain, sm.currentChains+1)
-	//lock some shit up
+	//lock
 	for i, val := range sm.chains {
 		newChains[i] = val	
 	}
 	sm.chains = newChains
 	sm.chains[1] = make(chain, sm.chainSize)
-	//unlock some shit up
+	//unlock
 	sm.beingResized = false	
 }
 
