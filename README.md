@@ -24,6 +24,7 @@ Some general, in-practice useage:
 
 ------------------------------------------------------------
 to create a new SessionManager object:
+	
 	var sm *sesh.SessionManager // globally
 		
 	...
