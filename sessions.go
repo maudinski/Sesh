@@ -1,4 +1,4 @@
-package main
+package sesh
 
 import(
 	"net/http"
