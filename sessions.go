@@ -70,7 +70,7 @@ func NewSM() *SessionManager{
 	return NewCustomSM(1000)
 }
 
-//custom initializer
+//just use NewSM() for default/recommended behavior.
 //will eventually have more customizable options, like initial amount of chains, when 
 //to resize, how many chains to add on resize, http.Cookie Name & maybe Value format, etc
 //initializes all necessary fields in SessionManager, then returns it
