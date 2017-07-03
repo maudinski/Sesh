@@ -74,8 +74,8 @@ func NewSM() *SessionManager{
 	return NewCustomSM(1000)
 }
 
-//just use NewSM() for default/recommended behavior.
-//will eventually have more customizable options, like initial amount of chains, when 
+//Use NewSM() for default/recommended behavior.
+//Will eventually have more customizable options, like initial amount of chains, when 
 //to resize, how many chains to add on resize, http.Cookie Name & maybe Value format, etc
 //initializes all necessary fields in SessionManager, then returns it
 func NewCustomSM(chainSize int) *SessionManager{
@@ -135,8 +135,7 @@ func (sm *SessionManager) VerifySession(r *http.Request) error{
  sm.checkResize. creates a new cookie, and sets the cookie*/
 
 //Starts a session by storing them by the identifier (username/unique trait about each
-//user). The returned cookies value is NOT just the identifier, it has more internal
-//information in it. Not for outside use, just fyi
+//user). Creates and sets a cookie to the passed in http.ResponseWriter
 func (sm *SessionManager) StartSession(w http.ResponseWriter, identifier string) {
 	spot := sm.nextSpot()
 	sm.m.Lock()
