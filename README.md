@@ -5,10 +5,10 @@ This is an easy to use, abstract session manager for Go.
 
 There are four main functions:
 
-	sm := sesh.NewSM()//returns SessionManager object with default settings
-	sm.StartSession(w, uniqueString)//w is http.Response Writer, unique string is username or something unique (like whatever you're using to identify/store users in a database)
-	sm.VerifySession(r)//r is *http.Request
-	sm.EndSession(r)//r is *http.Request
+	sm := sesh.NewSM() //returns SessionManager object with default settings
+	sm.StartSession(w, uniqueString) //w is http.Response Writer, unique string is username or something unique (like whatever you're using to identify/store users in a database)
+	sm.VerifySession(r) //r is *http.Request
+	sm.EndSession(r) //r is *http.Request
 
 and one alternative to NewSM()
 	
