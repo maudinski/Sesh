@@ -1,5 +1,4 @@
 //This package provides a simple API for managing sessions in Go
-
 package sesh
 
 import(
