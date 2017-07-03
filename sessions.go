@@ -1,3 +1,4 @@
+//This package provides a simple API for managing sessions in Go
 package sesh
 
 import(
@@ -66,6 +67,7 @@ type SpotMarker struct {
 /*******************************external functions for use*******************************/
 
 /****************************initializers*****************************/
+
 //default initializer
 func NewSessionManager() *SessionManager{
 	var sm SessionManager
