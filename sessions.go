@@ -10,8 +10,7 @@ import(
 
 const defaultChainSize = 1000
 
-//This object should be created as a global variable, so as to pass around the entire
-//program
+//this object should be a field in your custom handler 
 type SessionManager struct {
 	//chains is a slice of chain(chain is []session structs). This will be where all
 	//the sessions are stored
