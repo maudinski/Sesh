@@ -16,6 +16,8 @@ and one alternative to NewSM()
 
 ----
 
+# FunctionPrototypes and explanations:
+
 	func NewSM() *SessionManager
 	
 returns a SessionManager object with default settings. Recommended
@@ -44,7 +46,7 @@ more functionality/custimization options
 
 ----
 
-Under the hood:
+# Under the hood:
 
 The sessions are stored as a 2 dimensional slice. Its more specifically a slice
 of chains, and each chain holds (by default) 1000 session structs. The position
