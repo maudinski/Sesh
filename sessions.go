@@ -102,7 +102,7 @@ tampered with (to prevent against someone tampering with their cookies and
 trying to break the server). 3rd and 4th if statement check if the identifier
 matches and if the session is active, respectively. Returns nil if the session is valid*/
 
-//Verifies that a session is started for the requesting browser. Pass it the *http.Request
+//Verifies that a session is started for the requesting browser. P___ it the *http.Request
 //Returns an error if the cookie/session was invalid
 func (sm *SessionManager) VerifySession(r *http.Request) error {
 	c, err := r.Cookie("session")
@@ -132,7 +132,7 @@ func (sm *SessionManager) VerifySession(r *http.Request) error {
 sm.checkResize. creates a new cookie, and sets the cookie*/
 
 //Starts a session by storing them by the identifier (username/unique trait about each
-//user). Creates and sets a cookie to the passed in http.ResponseWriter
+//user). Creates and sets a cookie to the p___ed in http.ResponseWriter
 func (sm *SessionManager) StartSession(w http.ResponseWriter, identifier string) {
 	spot := sm.nextSpot()
 	sm.m.Lock()
@@ -188,7 +188,7 @@ func parseCookie(c *http.Cookie) (spotMarker, string, error) {
 
 //called by sm.StartSession
 //checks if resizing is needed. first if checks if its already being resized, then
-//returns. Second if checks if the passed in spot (which is the newly started session)
+//returns. Second if checks if the p___ed in spot (which is the newly started session)
 //is at the sm.resizeAt variable, and it if was added to the last chain (because if
 //the spot.index is past the sm.resizeAt, but it was added to the first chain, and
 //there is 7 chains, then there is no need to resize yet). calls sm.resize
